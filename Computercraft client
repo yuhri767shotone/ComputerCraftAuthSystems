@@ -1,190 +1,135 @@
--- Client Authentication Script
+-- Authentication Client (Keypad for Employee ID)
+local modemSide = "back"  -- The side where the modem is connected
+local redstoneSide = "front"  -- The side where redstone is powered
+local SERVER_ID = 41  -- ID of the authentication server
+local levelRequired = 1  -- Employee level (for example)
 
-local modemSide = "back"
-local SERVER_ID = 41  -- Replace with the actual server ID
-local levelRequired = 1  -- Set the level required for authentication (e.g., 1 for employee)
-
--- Check if the modem is connected
+-- Ensure modem is active
 if not peripheral.isPresent(modemSide) or peripheral.getType(modemSide) ~= "modem" then
-    print("Error: Modem not found on the back!")
+    print("Error: Modem not found!")
     return
 end
 rednet.open(modemSide)
 
--- Find the monitor
-local monitor = peripheral.find("monitor")
-if not monitor then
-    print("No monitor found.")
-    return
+-- Detect monitor
+local monitor = nil
+for _, side in pairs(peripheral.getNames()) do
+    if peripheral.getType(side) == "monitor" then
+        monitor = peripheral.wrap(side)
+        break
+    end
 end
 
--- Set up monitor UI
-monitor.setTextScale(1)
-monitor.setBackgroundColor(colors.black)
-monitor.setTextColor(colors.white)
-monitor.clear()
-
--- Function to display the welcome message
+-- Display welcome screen
 local function displayInterface()
-    monitor.clear()
-    monitor.setCursorPos(1, 1)
-    monitor.write("Click on the monitor to begin")
+    if monitor then
+        monitor.setTextScale(1)
+        monitor.clear()
+        monitor.setCursorPos(5, 3)
+        monitor.write("Click on the monitor to begin")
+    end
 end
 
--- Function to show the keypad with visible numbers on buttons
+-- Function to show keypad
 local function showKeypad()
-    monitor.clear()
-    monitor.setCursorPos(5, 2)
-    monitor.write("Enter Employee ID:")
-    
-    -- Display number buttons with labels
-    local buttons = {
-        { "1", 5, 9, 5, 6 },
-        { "2", 10, 14, 5, 6 },
-        { "3", 15, 19, 5, 6 },
-        { "4", 5, 9, 6, 7 },
-        { "5", 10, 14, 6, 7 },
-        { "6", 15, 19, 6, 7 },
-        { "7", 5, 9, 7, 8 },
-        { "8", 10, 14, 7, 8 },
-        { "9", 15, 19, 7, 8 },
-        { "0", 10, 14, 8, 9 },
-        { "Clear", 5, 9, 8, 9 },
-        { "Backspace", 15, 19, 8, 9 },
-        { "Enter", 10, 14, 9, 10 }
-    }
-    
-    -- Draw the buttons
-    for _, btn in ipairs(buttons) do
-        local text = btn[1]
-        local xmin, xmax, ymin, ymax = btn[2], btn[3], btn[4], btn[5]
-        fillButton(xmin, xmax, ymin, ymax, text)
+    if monitor then
+        monitor.clear()
+        monitor.setCursorPos(5, 2)
+        monitor.write("Enter Employee ID:")
+        monitor.setCursorPos(5, 4)
+        monitor.write("[0] [1] [2] [3] [4]")
+        monitor.setCursorPos(5, 5)
+        monitor.write("[5] [6] [7] [8] [9]")
+        monitor.setCursorPos(5, 6)
+        monitor.write("[Enter] [Clear] [Backspace]")
     end
 end
 
--- Function to fill buttons with numbers or text
-function fillButton(xmin, xmax, ymin, ymax, text)
-    local xCenter = math.floor((xmax + xmin - string.len(text)) / 2) + 1
-    local yCenter = math.floor((ymin + ymax) / 2)
+-- Function to handle input
+local function getEmployeeID()
+    local input = ""
+    while true do
+        local event, side, x, y = os.pullEvent("monitor_touch")
 
-    for y = ymin, ymax do
-        for x = xmin, xmax do
-            monitor.setCursorPos(x, y)
-            if y == yCenter and x == xCenter then
-                monitor.write(text)
-            else
-                monitor.write(" ")
-            end
+        -- Check for button clicks and build input
+        if event == "monitor_touch" then
+            if x >= 5 and x <= 9 and y == 4 then input = input .. "0" end
+            if x >= 10 and x <= 14 and y == 4 then input = input .. "1" end
+            if x >= 15 and x <= 19 and y == 4 then input = input .. "2" end
+            if x >= 5 and x <= 9 and y == 5 then input = input .. "3" end
+            if x >= 10 and x <= 14 and y == 5 then input = input .. "4" end
+            if x >= 15 and x <= 19 and y == 5 then input = input .. "5" end
+            if x >= 5 and x <= 9 and y == 6 then input = input .. "6" end
+            if x >= 10 and x <= 14 and y == 6 then input = input .. "7" end
+            if x >= 15 and x <= 19 and y == 6 then input = input .. "8" end
+            if x >= 20 and x <= 24 and y == 6 then input = input .. "9" end
+            if x >= 5 and x <= 9 and y == 7 then return input end
         end
     end
 end
 
--- Store input
-local input = ""
-
--- Handle the click for input
-function handleKeyInput(key)
-    input = input .. key
-    print("Current input: " .. input)
-    showKeypad() -- Re-display keypad with updated input
-end
-
--- Handle the backspace
-function handleBackspace()
-    input = input:sub(1, -2)
-    print("Input after backspace: " .. input)
-    showKeypad() -- Re-display keypad
-end
-
--- Handle clear input
-function handleClearInput()
-    input = ""
-    print("Input cleared.")
-    showKeypad() -- Re-display keypad
-end
-
--- Handle submit (send the input to the server)
-function handleSubmit()
-    print("Submitted Employee ID: " .. input)
-    -- Send the input to the server for authentication
-    rednet.send(SERVER_ID, input)
-    
-    -- Wait for server response
-    local senderId, response = rednet.receive(5)
-    
-    if response then
-        local authStatus, rank = response:match("^(%w+):(.+)$")
-        
-        if authStatus == "AUTH_SUCCESS" then
-            if rank == "1" then
-                print("Authentication successful. Rank 1 employee.")
-            elseif rank == "2" then
-                print("Authentication successful. Rank 2 employee.")
-            else
-                print("Authentication successful, but with different rank.")
-            end
-        elseif authStatus == "AUTH_DENIED" then
-            print("Authentication failed. Employee ID not found or rank mismatch.")
-        else
-            print("Unknown response.")
-        end
+-- Function to power redstone
+local function powerRedstone()
+    if peripheral.isPresent(redstoneSide) then
+        redstone.setOutput(redstoneSide, true)  -- Power redstone
+        sleep(1)  -- Keep it powered for 1 second
+        redstone.setOutput(redstoneSide, false)  -- Turn off redstone
+    else
+        print("Error: No redstone on the specified side!")
     end
 end
 
--- Button regions and interactions
-local buttonActions = {
-    ["0"] = function() handleKeyInput("0") end,
-    ["1"] = function() handleKeyInput("1") end,
-    ["2"] = function() handleKeyInput("2") end,
-    ["3"] = function() handleKeyInput("3") end,
-    ["4"] = function() handleKeyInput("4") end,
-    ["5"] = function() handleKeyInput("5") end,
-    ["6"] = function() handleKeyInput("6") end,
-    ["7"] = function() handleKeyInput("7") end,
-    ["8"] = function() handleKeyInput("8") end,
-    ["9"] = function() handleKeyInput("9") end,
-    ["Clear"] = handleClearInput,
-    ["Backspace"] = handleBackspace,
-    ["Enter"] = handleSubmit
-}
-
--- Function to check if the user clicked a button
-function checkClick(x, y)
-    local buttons = {
-        { "1", 5, 9, 5, 6 },
-        { "2", 10, 14, 5, 6 },
-        { "3", 15, 19, 5, 6 },
-        { "4", 5, 9, 6, 7 },
-        { "5", 10, 14, 6, 7 },
-        { "6", 15, 19, 6, 7 },
-        { "7", 5, 9, 7, 8 },
-        { "8", 10, 14, 7, 8 },
-        { "9", 15, 19, 7, 8 },
-        { "0", 10, 14, 8, 9 },
-        { "Clear", 5, 9, 8, 9 },
-        { "Backspace", 15, 19, 8, 9 },
-        { "Enter", 10, 14, 9, 10 }
-    }
-    
-    for _, btn in ipairs(buttons) do
-        local text = btn[1]
-        local xmin, xmax, ymin, ymax = btn[2], btn[3], btn[4], btn[5]
-        
-        if x >= xmin and x <= xmax and y >= ymin and y <= ymax then
-            -- Call the associated function for the button
-            if buttonActions[text] then
-                buttonActions[text]()
-                return true
-            end
-        end
-    end
-    return false
-end
+-- Show the initial interface and wait for click
+displayInterface()
 
 -- Wait for the player to click to begin
 while true do
     local event, side, x, y = os.pullEvent("monitor_touch")
     if event == "monitor_touch" then
-        checkClick(x, y)
+        showKeypad()
+        local employeeID = getEmployeeID()
+        print("Employee ID entered: " .. employeeID)
+
+        -- Send employee ID to the server for authentication
+        rednet.send(SERVER_ID, employeeID)
+
+        -- Wait for server response
+        local senderId, response = rednet.receive(5)
+
+        -- Process response
+        if response then
+            if response:find("AUTH_SUCCESS:") then
+                local rank = response:match("AUTH_SUCCESS:(.+)")
+                print("Authentication Successful! Rank: " .. rank)
+
+                if monitor then
+                    monitor.clear()
+                    monitor.setCursorPos(5, 3)
+                    monitor.write("Welcome, Employee ID: " .. employeeID)
+                    monitor.setCursorPos(5, 4)
+                    monitor.write("Rank: " .. rank)
+                end
+
+                -- Power redstone when authentication is successful
+                powerRedstone()
+
+            elseif response == "AUTH_DENIED" then
+                print("Access Denied.")
+                if monitor then
+                    monitor.clear()
+                    monitor.setCursorPos(5, 3)
+                    monitor.write("Access Denied.")
+                end
+            else
+                print("Authentication Failed.")
+                if monitor then
+                    monitor.clear()
+                    monitor.setCursorPos(5, 3)
+                    monitor.write("Authentication Failed.")
+                end
+            end
+        else
+            print("Unknown response received.")
+        end
     end
 end
