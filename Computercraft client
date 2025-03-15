@@ -63,6 +63,7 @@ local function getEmployeeID()
             if x >= 15 and x <= 19 and y == 6 then input = input .. "8" end
             if x >= 20 and x <= 24 and y == 6 then input = input .. "9" end
             if x >= 5 and x <= 9 and y == 7 then return input end
+            -- Handle other buttons if needed
         end
     end
 end
