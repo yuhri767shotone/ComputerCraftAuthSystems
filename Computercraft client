@@ -1,0 +1,91 @@
+-- Authentication Client (Auto-detects player clicking on monitor using Plethora) so makesure you onstall it
+local modemSide = "back"
+local sensorSide = "top"  -- The side where the Plethora Entity Sensor is attached
+local SERVER_ID = 41
+local levelRequired = 1  -- Required rank level
+
+-- Ensure modem is active
+if not peripheral.isPresent(modemSide) or peripheral.getType(modemSide) ~= "modem" then
+    print("Error: Modem not found on the back!")
+    return
+end
+rednet.open(modemSide)
+
+-- Detect monitor
+local monitor = nil
+for _, side in pairs(peripheral.getNames()) do
+    if peripheral.getType(side) == "monitor" then
+        monitor = peripheral.wrap(side)
+        break
+    end
+end
+
+-- Detect entity sensor (for detecting the player)
+local sensor = peripheral.wrap(sensorSide)
+if not sensor then
+    print("Error: No entity sensor detected!")
+    return
+end
+
+-- Function to display the interface on the monitor
+local function displayInterface()
+    if monitor then
+        monitor.setTextScale(1)
+        monitor.clear()
+        monitor.setCursorPos(5, 3)
+        monitor.write("Press to Authenticate")
+    end
+end
+
+-- Show interface
+displayInterface()
+
+-- Main loop to detect user interaction and authenticate
+while true do
+    local event, side, x, y = os.pullEvent("monitor_touch")
+    
+    -- When the monitor is touched, detect the player in front of the sensor
+    if event == "monitor_touch" then
+        local player = sensor.getEntityInFront()
+        
+        -- If a player is detected in front of the sensor
+        if player then
+            print("Player detected: " .. player)
+            -- Send the player's username and required level to the server for authentication
+            rednet.send(SERVER_ID, player .. ":" .. levelRequired)
+            
+            -- Wait for server's response
+            local senderId, response = rednet.receive(5)
+
+            -- Process response
+            if response and response:find("AUTH_SUCCESS:") then
+                local rank = response:match("AUTH_SUCCESS:(.+)")
+                print("Authentication Successful! Rank: " .. rank)
+
+                if monitor then
+                    monitor.clear()
+                    monitor.setCursorPos(5, 3)
+                    monitor.write("Welcome, " .. player)
+                    monitor.setCursorPos(5, 4)
+                    monitor.write("Rank: " .. rank)
+                end
+            elseif response == "AUTH_DENIED" then
+                print("Access Denied.")
+                if monitor then
+                    monitor.clear()
+                    monitor.setCursorPos(5, 3)
+                    monitor.write("Access Denied.")
+                end
+            else
+                print("Authentication Failed.")
+                if monitor then
+                    monitor.clear()
+                    monitor.setCursorPos(5, 3)
+                    monitor.write("Authentication Failed.")
+                end
+            end
+        else
+            print("No player detected in front.")
+        end
+    end
+end
