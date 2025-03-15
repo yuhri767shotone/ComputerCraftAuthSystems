@@ -1,4 +1,4 @@
--- Client Authentication Script
+-- Client Authentication Script, ughhh
 
 -- Ensure modem is active
 local modemSide = "back"
@@ -32,61 +32,47 @@ local function displayInterface()
     monitor.write("Click on the monitor to begin")
 end
 
--- Function to show the keypad
+-- Function to show the keypad with visible numbers on buttons
 local function showKeypad()
     monitor.clear()
     monitor.setCursorPos(5, 2)
     monitor.write("Enter Employee ID:")
     
-    -- Display buttons
-    monitor.setCursorPos(5, 4)
-    monitor.write("[0] [1] [2] [3] [4]")
-    
-    monitor.setCursorPos(5, 5)
-    monitor.write("[5] [6] [7] [8] [9]")
-    
-    monitor.setCursorPos(5, 6)
-    monitor.write("[Enter] [Clear] [Backspace]")
-end
-
--- Store buttons and their coordinates
-local buttons = {}
-
--- Function to create buttons
-local function setButton(name, func, xmin, xmax, ymin, ymax)
-    buttons[name] = {
-        func = func,
-        xmin = xmin,
-        xmax = xmax,
-        ymin = ymin,
-        ymax = ymax,
-        active = false
+    -- Display number buttons with labels
+    local buttons = {
+        { "1", 5, 9, 4, 5 },
+        { "2", 10, 14, 4, 5 },
+        { "3", 15, 19, 4, 5 },
+        { "4", 5, 9, 5, 6 },
+        { "5", 10, 14, 5, 6 },
+        { "6", 15, 19, 5, 6 },
+        { "7", 5, 9, 6, 7 },
+        { "8", 10, 14, 6, 7 },
+        { "9", 15, 19, 6, 7 },
+        { "0", 10, 14, 7, 8 },
+        { "Clear", 5, 9, 7, 8 },
+        { "Backspace", 15, 19, 7, 8 },
+        { "Enter", 10, 14, 8, 9 }
     }
-end
-
--- Function to handle button click events
-local function checkClick(x, y)
-    for name, button in pairs(buttons) do
-        if x >= button.xmin and x <= button.xmax and y >= button.ymin and y <= button.ymax then
-            button.func()
-            return true
-        end
+    
+    -- Draw the buttons
+    for _, btn in ipairs(buttons) do
+        local text = btn[1]
+        local xmin, xmax, ymin, ymax = btn[2], btn[3], btn[4], btn[5]
+        fillButton(xmin, xmax, ymin, ymax, text)
     end
-    return false
 end
 
--- Function to fill a button on the screen
-local function fillButton(name, color)
-    local button = buttons[name]
-    monitor.setBackgroundColor(color)
-    local xCenter = math.floor((button.xmax + button.xmin - string.len(name)) / 2) + 1
-    local yCenter = math.floor((button.ymin + button.ymax) / 2)
+-- Function to fill buttons with numbers or text
+function fillButton(xmin, xmax, ymin, ymax, text)
+    local xCenter = math.floor((xmax + xmin - string.len(text)) / 2) + 1
+    local yCenter = math.floor((ymin + ymax) / 2)
 
-    for y = button.ymin, button.ymax do
-        for x = button.xmin, button.xmax do
+    for y = ymin, ymax do
+        for x = xmin, xmax do
             monitor.setCursorPos(x, y)
             if y == yCenter and x == xCenter then
-                monitor.write(name)
+                monitor.write(text)
             else
                 monitor.write(" ")
             end
@@ -94,42 +80,31 @@ local function fillButton(name, color)
     end
 end
 
--- Create buttons and set their positions (Ensure correct alignment with the text)
-setButton("0", function() handleKeyInput("0") end, 5, 9, 4, 5)
-setButton("1", function() handleKeyInput("1") end, 10, 14, 4, 5)
-setButton("2", function() handleKeyInput("2") end, 15, 19, 4, 5)
-setButton("3", function() handleKeyInput("3") end, 5, 9, 5, 6)
-setButton("4", function() handleKeyInput("4") end, 10, 14, 5, 6)
-setButton("5", function() handleKeyInput("5") end, 15, 19, 5, 6)
-setButton("6", function() handleKeyInput("6") end, 5, 9, 6, 7)
-setButton("7", function() handleKeyInput("7") end, 10, 14, 6, 7)
-setButton("8", function() handleKeyInput("8") end, 15, 19, 6, 7)
-setButton("9", function() handleKeyInput("9") end, 20, 24, 6, 7)
-setButton("Clear", function() handleClearInput() end, 5, 9, 7, 8)
-setButton("Enter", function() handleSubmit() end, 10, 14, 7, 8)
-setButton("Backspace", function() handleBackspace() end, 15, 19, 7, 8)
-
--- Handle input
+-- Store input
 local input = ""
 
+-- Handle the click for input
 function handleKeyInput(key)
     input = input .. key
     print("Current input: " .. input)
     showKeypad() -- Re-display keypad with updated input
 end
 
-function handleClearInput()
-    input = ""
-    print("Input cleared.")
-    showKeypad() -- Re-display keypad
-end
-
+-- Handle the backspace
 function handleBackspace()
     input = input:sub(1, -2)
     print("Input after backspace: " .. input)
     showKeypad() -- Re-display keypad
 end
 
+-- Handle clear input
+function handleClearInput()
+    input = ""
+    print("Input cleared.")
+    showKeypad() -- Re-display keypad
+end
+
+-- Handle submit (send the input to the server)
 function handleSubmit()
     print("Submitted Employee ID: " .. input)
     -- Send the input to the server for authentication
@@ -149,12 +124,60 @@ function handleSubmit()
     end
 end
 
+-- Button regions and interactions
+local buttonActions = {
+    ["0"] = function() handleKeyInput("0") end,
+    ["1"] = function() handleKeyInput("1") end,
+    ["2"] = function() handleKeyInput("2") end,
+    ["3"] = function() handleKeyInput("3") end,
+    ["4"] = function() handleKeyInput("4") end,
+    ["5"] = function() handleKeyInput("5") end,
+    ["6"] = function() handleKeyInput("6") end,
+    ["7"] = function() handleKeyInput("7") end,
+    ["8"] = function() handleKeyInput("8") end,
+    ["9"] = function() handleKeyInput("9") end,
+    ["Clear"] = handleClearInput,
+    ["Backspace"] = handleBackspace,
+    ["Enter"] = handleSubmit
+}
+
+-- Function to check if the user clicked a button
+function checkClick(x, y)
+    local buttons = {
+        { "1", 5, 9, 4, 5 },
+        { "2", 10, 14, 4, 5 },
+        { "3", 15, 19, 4, 5 },
+        { "4", 5, 9, 5, 6 },
+        { "5", 10, 14, 5, 6 },
+        { "6", 15, 19, 5, 6 },
+        { "7", 5, 9, 6, 7 },
+        { "8", 10, 14, 6, 7 },
+        { "9", 15, 19, 6, 7 },
+        { "0", 10, 14, 7, 8 },
+        { "Clear", 5, 9, 7, 8 },
+        { "Backspace", 15, 19, 7, 8 },
+        { "Enter", 10, 14, 8, 9 }
+    }
+    
+    for _, btn in ipairs(buttons) do
+        local text = btn[1]
+        local xmin, xmax, ymin, ymax = btn[2], btn[3], btn[4], btn[5]
+        
+        if x >= xmin and x <= xmax and y >= ymin and y <= ymax then
+            -- Call the associated function for the button
+            if buttonActions[text] then
+                buttonActions[text]()
+                return true
+            end
+        end
+    end
+    return false
+end
+
 -- Wait for the player to click to begin
 while true do
     local event, side, x, y = os.pullEvent("monitor_touch")
     if event == "monitor_touch" then
-        if checkClick(x, y) then
-            -- Successfully handled button click
-        end
+        checkClick(x, y)
     end
 end
