@@ -1,5 +1,5 @@
--- Client Authentication Script v5.2(snapshot)
-
+-- Client Authentication Script
+--v5.1(snapshot:a1)
 -- Ensure modem is active
 local modemSide = "back"
 local SERVER_ID = 41  -- Replace with actual server ID
@@ -37,10 +37,14 @@ local function showKeypad()
     monitor.clear()
     monitor.setCursorPos(5, 2)
     monitor.write("Enter Employee ID:")
+    
+    -- Display buttons
     monitor.setCursorPos(5, 4)
     monitor.write("[0] [1] [2] [3] [4]")
+    
     monitor.setCursorPos(5, 5)
     monitor.write("[5] [6] [7] [8] [9]")
+    
     monitor.setCursorPos(5, 6)
     monitor.write("[Enter] [Clear] [Backspace]")
 end
@@ -90,7 +94,7 @@ local function fillButton(name, color)
     end
 end
 
--- Create buttons and set their positions
+-- Create buttons and set their positions (Ensure correct alignment with the text)
 setButton("0", function() handleKeyInput("0") end, 5, 9, 4, 5)
 setButton("1", function() handleKeyInput("1") end, 10, 14, 4, 5)
 setButton("2", function() handleKeyInput("2") end, 15, 19, 4, 5)
