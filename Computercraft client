@@ -1,8 +1,7 @@
--- Authentication Client (Auto-detects player clicking on monitor using Plethora) so makesure you onstall it
+-- Authentication Client (Keypad for Employee ID)
 local modemSide = "back"
-local sensorSide = "top"  -- The side where the Plethora Entity Sensor is attached
 local SERVER_ID = 41
-local levelRequired = 1  -- Required rank level
+local levelRequired = 1  -- Employee level (for example)
 
 -- Ensure modem is active
 if not peripheral.isPresent(modemSide) or peripheral.getType(modemSide) ~= "modem" then
@@ -20,72 +19,97 @@ for _, side in pairs(peripheral.getNames()) do
     end
 end
 
--- Detect entity sensor (for detecting the player)
-local sensor = peripheral.wrap(sensorSide)
-if not sensor then
-    print("Error: No entity sensor detected!")
-    return
-end
-
--- Function to display the interface on the monitor
+-- Display welcome screen
 local function displayInterface()
     if monitor then
         monitor.setTextScale(1)
         monitor.clear()
         monitor.setCursorPos(5, 3)
-        monitor.write("Press to Authenticate")
+        monitor.write("Click on the monitor to begin")
     end
 end
 
--- Show interface
+-- Function to show keypad
+local function showKeypad()
+    if monitor then
+        monitor.clear()
+        monitor.setCursorPos(5, 2)
+        monitor.write("Enter Employee ID:")
+        monitor.setCursorPos(5, 4)
+        monitor.write("[0] [1] [2] [3] [4]")
+        monitor.setCursorPos(5, 5)
+        monitor.write("[5] [6] [7] [8] [9]")
+        monitor.setCursorPos(5, 6)
+        monitor.write("[Enter] [Clear] [Backspace]")
+    end
+end
+
+-- Function to handle input
+local function getEmployeeID()
+    local input = ""
+    while true do
+        local event, side, x, y = os.pullEvent("monitor_touch")
+        
+        -- Check for button clicks and build input
+        if event == "monitor_touch" then
+            if x >= 5 and x <= 9 and y == 4 then input = input .. "0" end
+            if x >= 10 and x <= 14 and y == 4 then input = input .. "1" end
+            if x >= 15 and x <= 19 and y == 4 then input = input .. "2" end
+            if x >= 5 and x <= 9 and y == 5 then input = input .. "3" end
+            if x >= 10 and x <= 14 and y == 5 then input = input .. "4" end
+            if x >= 15 and x <= 19 and y == 5 then input = input .. "5" end
+            if x >= 5 and x <= 9 and y == 6 then input = input .. "6" end
+            if x >= 10 and x <= 14 and y == 6 then input = input .. "7" end
+            if x >= 15 and x <= 19 and y == 6 then input = input .. "8" end
+            if x >= 20 and x <= 24 and y == 6 then input = input .. "9" end
+            if x >= 5 and x <= 9 and y == 7 then return input end
+        end
+    end
+end
+
+-- Show the initial interface and wait for click
 displayInterface()
 
--- Main loop to detect user interaction and authenticate
+-- Wait for the player to click to begin
 while true do
     local event, side, x, y = os.pullEvent("monitor_touch")
-    
-    -- When the monitor is touched, detect the player in front of the sensor
     if event == "monitor_touch" then
-        local player = sensor.getEntityInFront()
-        
-        -- If a player is detected in front of the sensor
-        if player then
-            print("Player detected: " .. player)
-            -- Send the player's username and required level to the server for authentication
-            rednet.send(SERVER_ID, player .. ":" .. levelRequired)
-            
-            -- Wait for server's response
-            local senderId, response = rednet.receive(5)
+        showKeypad()
+        local employeeID = getEmployeeID()
+        print("Employee ID entered: " .. employeeID)
 
-            -- Process response
-            if response and response:find("AUTH_SUCCESS:") then
-                local rank = response:match("AUTH_SUCCESS:(.+)")
-                print("Authentication Successful! Rank: " .. rank)
+        -- Send employee ID to the server for authentication
+        rednet.send(SERVER_ID, employeeID)
 
-                if monitor then
-                    monitor.clear()
-                    monitor.setCursorPos(5, 3)
-                    monitor.write("Welcome, " .. player)
-                    monitor.setCursorPos(5, 4)
-                    monitor.write("Rank: " .. rank)
-                end
-            elseif response == "AUTH_DENIED" then
-                print("Access Denied.")
-                if monitor then
-                    monitor.clear()
-                    monitor.setCursorPos(5, 3)
-                    monitor.write("Access Denied.")
-                end
-            else
-                print("Authentication Failed.")
-                if monitor then
-                    monitor.clear()
-                    monitor.setCursorPos(5, 3)
-                    monitor.write("Authentication Failed.")
-                end
+        -- Wait for server response
+        local senderId, response = rednet.receive(5)
+
+        -- Process response
+        if response and response:find("AUTH_SUCCESS:") then
+            local rank = response:match("AUTH_SUCCESS:(.+)")
+            print("Authentication Successful! Rank: " .. rank)
+
+            if monitor then
+                monitor.clear()
+                monitor.setCursorPos(5, 3)
+                monitor.write("Welcome, Employee ID: " .. employeeID)
+                monitor.setCursorPos(5, 4)
+                monitor.write("Rank: " .. rank)
+            end
+        elseif response == "AUTH_DENIED" then
+            print("Access Denied.")
+            if monitor then
+                monitor.clear()
+                monitor.setCursorPos(5, 3)
+                monitor.write("Access Denied.")
             end
         else
-            print("No player detected in front.")
+            print("Authentication Failed.")
+            if monitor then
+                monitor.clear()
+                monitor.setCursorPos(5, 3)
+                monitor.write("Authentication Failed.")
+            end
         end
     end
 end
