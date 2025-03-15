@@ -1,8 +1,7 @@
--- Client Authentication Script, ughhh
+-- Client Authentication Script
 
--- Ensure modem is active
 local modemSide = "back"
-local SERVER_ID = 41  -- Replace with actual server ID
+local SERVER_ID = 41  -- Replace with the actual server ID
 local levelRequired = 1  -- Set the level required for authentication (e.g., 1 for employee)
 
 -- Check if the modem is connected
@@ -20,7 +19,7 @@ if not monitor then
 end
 
 -- Set up monitor UI
-monitor.setTextScale(1)  -- Set text scale to 1
+monitor.setTextScale(1)
 monitor.setBackgroundColor(colors.black)
 monitor.setTextColor(colors.white)
 monitor.clear()
@@ -40,19 +39,19 @@ local function showKeypad()
     
     -- Display number buttons with labels
     local buttons = {
-        { "1", 5, 9, 4, 5 },
-        { "2", 10, 14, 4, 5 },
-        { "3", 15, 19, 4, 5 },
-        { "4", 5, 9, 5, 6 },
-        { "5", 10, 14, 5, 6 },
-        { "6", 15, 19, 5, 6 },
-        { "7", 5, 9, 6, 7 },
-        { "8", 10, 14, 6, 7 },
-        { "9", 15, 19, 6, 7 },
-        { "0", 10, 14, 7, 8 },
-        { "Clear", 5, 9, 7, 8 },
-        { "Backspace", 15, 19, 7, 8 },
-        { "Enter", 10, 14, 8, 9 }
+        { "1", 5, 9, 5, 6 },
+        { "2", 10, 14, 5, 6 },
+        { "3", 15, 19, 5, 6 },
+        { "4", 5, 9, 6, 7 },
+        { "5", 10, 14, 6, 7 },
+        { "6", 15, 19, 6, 7 },
+        { "7", 5, 9, 7, 8 },
+        { "8", 10, 14, 7, 8 },
+        { "9", 15, 19, 7, 8 },
+        { "0", 10, 14, 8, 9 },
+        { "Clear", 5, 9, 8, 9 },
+        { "Backspace", 15, 19, 8, 9 },
+        { "Enter", 10, 14, 9, 10 }
     }
     
     -- Draw the buttons
@@ -113,14 +112,22 @@ function handleSubmit()
     -- Wait for server response
     local senderId, response = rednet.receive(5)
     
-    if response == "AUTH_SUCCESS" then
-        print("Authentication successful.")
-        -- Add further handling here, e.g., display success message on monitor
-    elseif response == "AUTH_DENIED" then
-        print("Authentication failed.")
-        -- Add further handling here, e.g., display failure message on monitor
-    else
-        print("Unknown response.")
+    if response then
+        local authStatus, rank = response:match("^(%w+):(.+)$")
+        
+        if authStatus == "AUTH_SUCCESS" then
+            if rank == "1" then
+                print("Authentication successful. Rank 1 employee.")
+            elseif rank == "2" then
+                print("Authentication successful. Rank 2 employee.")
+            else
+                print("Authentication successful, but with different rank.")
+            end
+        elseif authStatus == "AUTH_DENIED" then
+            print("Authentication failed. Employee ID not found or rank mismatch.")
+        else
+            print("Unknown response.")
+        end
     end
 end
 
@@ -144,19 +151,19 @@ local buttonActions = {
 -- Function to check if the user clicked a button
 function checkClick(x, y)
     local buttons = {
-        { "1", 5, 9, 4, 5 },
-        { "2", 10, 14, 4, 5 },
-        { "3", 15, 19, 4, 5 },
-        { "4", 5, 9, 5, 6 },
-        { "5", 10, 14, 5, 6 },
-        { "6", 15, 19, 5, 6 },
-        { "7", 5, 9, 6, 7 },
-        { "8", 10, 14, 6, 7 },
-        { "9", 15, 19, 6, 7 },
-        { "0", 10, 14, 7, 8 },
-        { "Clear", 5, 9, 7, 8 },
-        { "Backspace", 15, 19, 7, 8 },
-        { "Enter", 10, 14, 8, 9 }
+        { "1", 5, 9, 5, 6 },
+        { "2", 10, 14, 5, 6 },
+        { "3", 15, 19, 5, 6 },
+        { "4", 5, 9, 6, 7 },
+        { "5", 10, 14, 6, 7 },
+        { "6", 15, 19, 6, 7 },
+        { "7", 5, 9, 7, 8 },
+        { "8", 10, 14, 7, 8 },
+        { "9", 15, 19, 7, 8 },
+        { "0", 10, 14, 8, 9 },
+        { "Clear", 5, 9, 8, 9 },
+        { "Backspace", 15, 19, 8, 9 },
+        { "Enter", 10, 14, 9, 10 }
     }
     
     for _, btn in ipairs(buttons) do
