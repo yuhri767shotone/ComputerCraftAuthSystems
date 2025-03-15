@@ -1,186 +1,168 @@
--- Authentication Client (Keypad for Employee ID) 4.5.1
-local modemSide = "back"
-local SERVER_ID = 41
-local levelRequired = 1  -- Employee level (for example)
+-- Client Authentication Script fix v5
 
 -- Ensure modem is active
+local modemSide = "back"
+local SERVER_ID = 41  -- Replace with actual server ID
+local levelRequired = 1  -- Set the level required for authentication (e.g., 1 for employee)
+
+-- Check if the modem is connected
 if not peripheral.isPresent(modemSide) or peripheral.getType(modemSide) ~= "modem" then
     print("Error: Modem not found on the back!")
     return
 end
 rednet.open(modemSide)
 
--- Detect monitor
-local monitors = {peripheral.find("monitor")}
-local mon = {}
-for funcName,_ in pairs(monitors[1]) do
-    mon[funcName] = function(...)
-        for i=1,#monitors-1 do monitors[i][funcName](unpack(arg)) end
-        return monitors[#monitors][funcName](unpack(arg))
-    end
+-- Find the monitor
+local monitors = peripheral.find("monitor")
+if #monitors == 0 then
+    print("No monitor found.")
+    return
 end
+local mon = monitors[1]  -- Use the first monitor if multiple monitors are found
 
-mon.setTextScale(1)
-mon.setTextColor(colors.white)
-local button = {}
+-- Set up monitor UI
+mon.setTextScale(1)  -- Set text scale to 1
 mon.setBackgroundColor(colors.black)
+mon.setTextColor(colors.white)
+mon.clear()
 
--- Function to clear the button table
-function clearTable()
-    button = {}
+-- Function to display the welcome message
+local function displayInterface()
+    mon.clear()
+    mon.setCursorPos(1, 1)
+    mon.write("Click on the monitor to begin")
 end
 
--- Set the button details
-function setButton(name, buttonOn)
-    button[name]["active"] = buttonOn
-    screen()
+-- Function to show the keypad
+local function showKeypad()
+    mon.clear()
+    mon.setCursorPos(5, 2)
+    mon.write("Enter Employee ID:")
+    mon.setCursorPos(5, 4)
+    mon.write("[0] [1] [2] [3] [4]")
+    mon.setCursorPos(5, 5)
+    mon.write("[5] [6] [7] [8] [9]")
+    mon.setCursorPos(5, 6)
+    mon.write("[Enter] [Clear] [Backspace]")
 end
 
--- Set button properties
-function setTable(name, func, param, xmin, xmax, ymin, ymax)
-    button[name] = {}
-    button[name]["func"] = func
-    button[name]["active"] = false
-    button[name]["param"] = param
-    button[name]["xmin"] = xmin
-    button[name]["ymin"] = ymin
-    button[name]["xmax"] = xmax
-    button[name]["ymax"] = ymax
+-- Store buttons and their coordinates
+local buttons = {}
+
+-- Function to create buttons
+local function setButton(name, func, xmin, xmax, ymin, ymax)
+    buttons[name] = {
+        func = func,
+        xmin = xmin,
+        xmax = xmax,
+        ymin = ymin,
+        ymax = ymax,
+        active = false
+    }
 end
 
--- Function for a button's action
-function funcName()
-    print("You clicked the button.")
-end
-
--- Fill the button table with dynamic placement
-function fillTable()
-    local w, h = mon.getSize()  -- Get monitor size
-    local buttonWidth = math.floor(w / 4)  -- Divide the screen into 4 columns for buttons
-    local buttonHeight = math.floor(h / 5)  -- Divide the screen into 5 rows for buttons
-
-    -- Set buttons in dynamic positions based on screen size
-    setTable("1", funcName, "1", 5, buttonWidth, 4, buttonHeight)
-    setTable("2", funcName, "2", buttonWidth + 1, buttonWidth * 2, 4, buttonHeight)
-    setTable("3", funcName, "3", buttonWidth * 2 + 1, buttonWidth * 3, 4, buttonHeight)
-    setTable("4", funcName, "4", 5, buttonWidth, 7, buttonHeight * 2)
-    setTable("5", funcName, "5", buttonWidth + 1, buttonWidth * 2, 7, buttonHeight * 2)
-    setTable("6", funcName, "6", buttonWidth * 2 + 1, buttonWidth * 3, 7, buttonHeight * 2)
-    setTable("7", funcName, "7", 5, buttonWidth, 10, buttonHeight * 3)
-    setTable("8", funcName, "8", buttonWidth + 1, buttonWidth * 2, 10, buttonHeight * 3)
-    setTable("9", funcName, "9", buttonWidth * 2 + 1, buttonWidth * 3, 10, buttonHeight * 3)
-    setTable("0", funcName, "0", buttonWidth + 1, buttonWidth * 2, 13, buttonHeight * 4)
-
-    -- Adding an "Exit" button
-    setTable("Exit", exitKeypad, "", 5, buttonWidth * 3, h - 3, h)
-end
-
--- Fill button text on screen
-function fill(text, color, bData)
-    mon.setBackgroundColor(color)
-    local yspot = math.floor((bData["ymin"] + bData["ymax"]) / 2)
-    local xspot = math.floor((bData["xmax"] - bData["xmin"] - string.len(text)) / 2) + 1
-    for j = bData["ymin"], bData["ymax"] do
-        mon.setCursorPos(bData["xmin"], j)
-        if j == yspot then
-            for k = 0, bData["xmax"] - bData["xmin"] - string.len(text) + 1 do
-                if k == xspot then
-                    mon.write(text)
-                else
-                    mon.write(" ")
-                end
-            end
-        else
-            for i = bData["xmin"], bData["xmax"] do
-                mon.write(" ")
-            end
-        end
-    end
-    mon.setBackgroundColor(colors.black)
-end
-
--- Draw the screen and display buttons
-function screen()
-    local currColor
-    for name, data in pairs(button) do
-        local on = data["active"]
-        if on == true then currColor = colors.lime else currColor = colors.red end
-        fill(name, currColor, data)
-    end
-end
-
--- Toggle button states
-function toggleButton(name)
-    button[name]["active"] = not button[name]["active"]
-    screen()
-end
-
--- Flash button color
-function flash(name)
-    toggleButton(name)
-    screen()
-    sleep(0.15)
-    toggleButton(name)
-    screen()
-end
-
--- Check if the touch was within a button area
-function checkxy(x, y)
-    for name, data in pairs(button) do
-        if y >= data["ymin"] and y <= data["ymax"] then
-            if x >= data["xmin"] and x <= data["xmax"] then
-                if data["param"] == "" then
-                    data["func"]()
-                else
-                    data["func"](data["param"])
-                end
-                return true
-            end
+-- Function to handle button click events
+local function checkClick(x, y)
+    for name, button in pairs(buttons) do
+        if x >= button.xmin and x <= button.xmax and y >= button.ymin and y <= button.ymax then
+            button.func()
+            return true
         end
     end
     return false
 end
 
--- Display the heading
-function heading(text)
-    w, h = mon.getSize()
-    mon.setCursorPos((w - string.len(text)) / 2 + 1, 1)
-    mon.write(text)
-end
+-- Function to fill a button on the screen
+local function fillButton(name, color)
+    local button = buttons[name]
+    mon.setBackgroundColor(color)
+    local xCenter = math.floor((button.xmax + button.xmin - string.len(name)) / 2) + 1
+    local yCenter = math.floor((button.ymin + button.ymax) / 2)
 
--- Label on the screen
-function label(w, h, text)
-    mon.setCursorPos(w, h)
-    mon.write(text)
-end
-
--- Show the keypad with interactive buttons
-function showKeypad()
-    fillTable()
-    screen()
-end
-
--- Function to handle exit
-function exitKeypad()
-    print("Exiting keypad...")
-    os.exit()
-end
-
--- Handle input from the user
-local function getEmployeeID()
-    local input = ""
-    while true do
-        local event, side, x, y = os.pullEvent("monitor_touch")
-        if event == "monitor_touch" then
-            -- Check if clicked in any of the button areas
-            if checkxy(x, y) then
-                input = input .. button["1"]["param"]
-                print("Employee ID entered: " .. input)
+    for y = button.ymin, button.ymax do
+        for x = button.xmin, button.xmax do
+            mon.setCursorPos(x, y)
+            if y == yCenter and x == xCenter then
+                mon.write(name)
+            else
+                mon.write(" ")
             end
         end
     end
 end
 
--- Main flow
-showKeypad()
-getEmployeeID()
+-- Create buttons and set their positions
+setButton("0", function() handleKeyInput("0") end, 5, 9, 4, 5)
+setButton("1", function() handleKeyInput("1") end, 10, 14, 4, 5)
+setButton("2", function() handleKeyInput("2") end, 15, 19, 4, 5)
+setButton("3", function() handleKeyInput("3") end, 5, 9, 5, 6)
+setButton("4", function() handleKeyInput("4") end, 10, 14, 5, 6)
+setButton("5", function() handleKeyInput("5") end, 15, 19, 5, 6)
+setButton("6", function() handleKeyInput("6") end, 5, 9, 6, 7)
+setButton("7", function() handleKeyInput("7") end, 10, 14, 6, 7)
+setButton("8", function() handleKeyInput("8") end, 15, 19, 6, 7)
+setButton("9", function() handleKeyInput("9") end, 20, 24, 6, 7)
+setButton("Enter", function() submitEmployeeID() end, 5, 9, 7, 8)
+setButton("Clear", function() clearEmployeeID() end, 10, 14, 7, 8)
+setButton("Backspace", function() backspaceEmployeeID() end, 15, 19, 7, 8)
+
+-- Display the interface when the program starts
+displayInterface()
+
+-- Employee ID input tracking
+local employeeID = ""
+
+-- Function to handle key inputs
+local function handleKeyInput(key)
+    employeeID = employeeID .. key
+    mon.setCursorPos(5, 8)
+    mon.write("ID: " .. employeeID)
+end
+
+-- Function to clear the Employee ID
+local function clearEmployeeID()
+    employeeID = ""
+    mon.setCursorPos(5, 8)
+    mon.write("ID: " .. employeeID)
+end
+
+-- Function to handle backspace
+local function backspaceEmployeeID()
+    employeeID = employeeID:sub(1, -2)
+    mon.setCursorPos(5, 8)
+    mon.write("ID: " .. employeeID)
+end
+
+-- Function to submit the Employee ID
+local function submitEmployeeID()
+    rednet.send(SERVER_ID, employeeID)
+
+    -- Wait for the server's response
+    local senderId, response = rednet.receive(5)
+
+    -- Process the server's response
+    if response == "AUTH_SUCCESS" then
+        print("Authentication successful!")
+        mon.clear()
+        mon.setCursorPos(5, 3)
+        mon.write("Authenticated as " .. employeeID)
+    elseif response == "AUTH_DENIED" then
+        print("Access Denied.")
+        mon.clear()
+        mon.setCursorPos(5, 3)
+        mon.write("Access Denied.")
+    else
+        print("Authentication Failed.")
+        mon.clear()
+        mon.setCursorPos(5, 3)
+        mon.write("Authentication Failed.")
+    end
+end
+
+-- Handle clicks on the monitor
+while true do
+    local event, side, x, y = os.pullEvent("monitor_touch")
+    if checkClick(x, y) then
+        -- A button was clicked
+    end
+end
