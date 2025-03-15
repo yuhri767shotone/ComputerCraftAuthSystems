@@ -19,6 +19,19 @@ for _, side in pairs(peripheral.getNames()) do
     end
 end
 
+-- Function to adjust keypad layout based on monitor size
+local function getKeypadLayout()
+    local width, height = monitor.getSize()
+    local keypadWidth = 5
+    local keypadHeight = 5
+
+    -- Adjust to fit within the screen size
+    if width < 30 then keypadWidth = 3 end
+    if height < 10 then keypadHeight = 3 end
+
+    return keypadWidth, keypadHeight
+end
+
 -- Display welcome screen
 local function displayInterface()
     if monitor then
@@ -31,16 +44,29 @@ end
 
 -- Function to show keypad
 local function showKeypad()
+    local keypadWidth, keypadHeight = getKeypadLayout()
+
     if monitor then
         monitor.clear()
         monitor.setCursorPos(5, 2)
         monitor.write("Enter Employee ID:")
-        monitor.setCursorPos(5, 4)
-        monitor.write("[0] [1] [2] [3] [4]")
-        monitor.setCursorPos(5, 5)
-        monitor.write("[5] [6] [7] [8] [9]")
-        monitor.setCursorPos(5, 6)
-        monitor.write("[Enter] [Clear] [Backspace]")
+
+        -- Buttons in a grid (5x3 or smaller based on screen size)
+        local buttons = {
+            {"1", "2", "3", "Enter"},
+            {"4", "5", "6", "Clear"},
+            {"7", "8", "9", "Backspace"},
+            {"0"}
+        }
+
+        -- Dynamically adjust positions based on monitor size
+        local buttonX, buttonY = 5, 4
+        for i, row in ipairs(buttons) do
+            for j, button in ipairs(row) do
+                monitor.setCursorPos(buttonX + (j - 1) * 6, buttonY + (i - 1) * 2)
+                monitor.write("[" .. button .. "]")
+            end
+        end
     end
 end
 
@@ -50,20 +76,25 @@ local function getEmployeeID()
     while true do
         local event, side, x, y = os.pullEvent("monitor_touch")
         
+        -- Get the monitor size for dynamic button areas
+        local keypadWidth, keypadHeight = getKeypadLayout()
+
         -- Check for button clicks and build input
         if event == "monitor_touch" then
-            if x >= 5 and x <= 9 and y == 4 then input = input .. "0" end
-            if x >= 10 and x <= 14 and y == 4 then input = input .. "1" end
-            if x >= 15 and x <= 19 and y == 4 then input = input .. "2" end
-            if x >= 5 and x <= 9 and y == 5 then input = input .. "3" end
-            if x >= 10 and x <= 14 and y == 5 then input = input .. "4" end
-            if x >= 15 and x <= 19 and y == 5 then input = input .. "5" end
-            if x >= 5 and x <= 9 and y == 6 then input = input .. "6" end
-            if x >= 10 and x <= 14 and y == 6 then input = input .. "7" end
-            if x >= 15 and x <= 19 and y == 6 then input = input .. "8" end
-            if x >= 20 and x <= 24 and y == 6 then input = input .. "9" end
-            if x >= 5 and x <= 9 and y == 7 then return input end
-            -- Handle other buttons if needed
+            -- Handle number and action buttons
+            if x >= 5 and x <= 10 and y == 4 then input = input .. "1" end
+            if x >= 11 and x <= 16 and y == 4 then input = input .. "2" end
+            if x >= 17 and x <= 22 and y == 4 then input = input .. "3" end
+            if x >= 5 and x <= 10 and y == 5 then input = input .. "4" end
+            if x >= 11 and x <= 16 and y == 5 then input = input .. "5" end
+            if x >= 17 and x <= 22 and y == 5 then input = input .. "6" end
+            if x >= 5 and x <= 10 and y == 6 then input = input .. "7" end
+            if x >= 11 and x <= 16 and y == 6 then input = input .. "8" end
+            if x >= 17 and x <= 22 and y == 6 then input = input .. "9" end
+            if x >= 5 and x <= 10 and y == 7 then input = input .. "0" end
+            if x >= 11 and x <= 16 and y == 7 then return input end  -- "Enter"
+            if x >= 17 and x <= 22 and y == 7 then input = "" end  -- "Clear"
+            if x >= 23 and x <= 28 and y == 6 then input = input:sub(1, -2) end  -- "Backspace"
         end
     end
 end
