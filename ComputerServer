@@ -1,0 +1,109 @@
+-- Authentication Server (ID 41)
+local DISK_PATH = "/disk"
+local USER_FILE = "users.txt"
+local AUTH_LOG = "auth_log.txt"
+local modemSide = "back"
+local monitorSide = nil  -- Will auto-detect monitor
+local userCache = {}  -- Stores users even when disk is removed
+
+-- Rank levels
+local rankLevels = {
+    employee = 1,
+    manager = 2,
+    admin = 3,
+    executive = 4,
+    overseer = 5,
+    owner = math.huge
+}
+
+-- Function to detect and set monitor
+local function detectMonitor()
+    for _, side in pairs(peripheral.getNames()) do
+        if peripheral.getType(side) == "monitor" then
+            monitorSide = peripheral.wrap(side)
+            monitorSide.setTextScale(1)
+            monitorSide.clear()
+            monitorSide.setCursorPos(1, 1)
+            monitorSide.write("Auth Server Active")
+            break
+        end
+    end
+end
+
+-- Function to log authentication attempts
+local function logAuthentication(username, status, rank)
+    local message = username .. " has authenticated (" .. status .. ")"
+    if rank then
+        message = message .. " Rank: " .. rank
+    end
+    print(message)
+
+    -- Log to file
+    local logFile = fs.open(AUTH_LOG, "a")
+    logFile.writeLine(message)
+    logFile.close()
+
+    -- Display on monitor
+    if monitorSide then
+        monitorSide.clear()
+        monitorSide.setCursorPos(1, 1)
+        monitorSide.write(message)
+    end
+end
+
+-- Function to load users from disk
+local function loadUsers()
+    local users = {}
+    if fs.exists(DISK_PATH .. "/" .. USER_FILE) then
+        local file = fs.open(DISK_PATH .. "/" .. USER_FILE, "r")
+        if file then
+            for line in file.readAll():gmatch("[^\r\n]+") do
+                local name, rank = line:match("([^=]+)=([^=]+)")
+                if name and rank then
+                    users[name] = rank
+                end
+            end
+            file.close()
+        end
+        userCache = users  -- Update cache
+    else
+        print("Disk missing. Using cached users.")
+    end
+end
+
+-- Ensure modem is active
+if not peripheral.isPresent(modemSide) or peripheral.getType(modemSide) ~= "modem" then
+    print("Error: Modem not found on the back!")
+    return
+end
+rednet.open(modemSide)
+detectMonitor()
+loadUsers()
+
+print("Authentication Server Online...")
+
+-- Main server loop
+while true do
+    local senderId, message = rednet.receive()
+    loadUsers()  -- Reload users in case the disk was updated
+
+    local users = userCache  -- Use cached data
+    local username, levelRequired = message:match("([^:]+):(%d+)")  
+    levelRequired = tonumber(levelRequired)
+
+    if users[username] then
+        local rank = users[username]
+        local userLevel = rankLevels[rank] or 0
+
+        if userLevel >= levelRequired then
+            rednet.send(senderId, "AUTH_SUCCESS:" .. rank)
+            logAuthentication(username, "Access Granted", rank)
+        else
+            rednet.send(senderId, "AUTH_DENIED")
+            logAuthentication(username, "Access Denied", rank)
+        end
+    else
+        rednet.send(senderId, "AUTH_FAILED")
+        logAuthentication(username, "User Not Found")
+    end
+end
