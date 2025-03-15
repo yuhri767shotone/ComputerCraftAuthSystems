@@ -1,4 +1,4 @@
--- Client Authentication Scriptdddv5
+-- Client Authentication Script v5.2(snapshot)
 
 -- Ensure modem is active
 local modemSide = "back"
@@ -100,4 +100,57 @@ setButton("5", function() handleKeyInput("5") end, 15, 19, 5, 6)
 setButton("6", function() handleKeyInput("6") end, 5, 9, 6, 7)
 setButton("7", function() handleKeyInput("7") end, 10, 14, 6, 7)
 setButton("8", function() handleKeyInput("8") end, 15, 19, 6, 7)
-setButton("9", function() handleKeyInput("9") end, 20, 24, 
+setButton("9", function() handleKeyInput("9") end, 20, 24, 6, 7)
+setButton("Clear", function() handleClearInput() end, 5, 9, 7, 8)
+setButton("Enter", function() handleSubmit() end, 10, 14, 7, 8)
+setButton("Backspace", function() handleBackspace() end, 15, 19, 7, 8)
+
+-- Handle input
+local input = ""
+
+function handleKeyInput(key)
+    input = input .. key
+    print("Current input: " .. input)
+    showKeypad() -- Re-display keypad with updated input
+end
+
+function handleClearInput()
+    input = ""
+    print("Input cleared.")
+    showKeypad() -- Re-display keypad
+end
+
+function handleBackspace()
+    input = input:sub(1, -2)
+    print("Input after backspace: " .. input)
+    showKeypad() -- Re-display keypad
+end
+
+function handleSubmit()
+    print("Submitted Employee ID: " .. input)
+    -- Send the input to the server for authentication
+    rednet.send(SERVER_ID, input)
+    
+    -- Wait for server response
+    local senderId, response = rednet.receive(5)
+    
+    if response == "AUTH_SUCCESS" then
+        print("Authentication successful.")
+        -- Add further handling here, e.g., display success message on monitor
+    elseif response == "AUTH_DENIED" then
+        print("Authentication failed.")
+        -- Add further handling here, e.g., display failure message on monitor
+    else
+        print("Unknown response.")
+    end
+end
+
+-- Wait for the player to click to begin
+while true do
+    local event, side, x, y = os.pullEvent("monitor_touch")
+    if event == "monitor_touch" then
+        if checkClick(x, y) then
+            -- Successfully handled button click
+        end
+    end
+end
