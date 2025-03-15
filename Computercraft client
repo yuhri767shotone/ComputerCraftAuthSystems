@@ -1,4 +1,4 @@
--- v4 Authentication Client (Keypad for Employee ID)
+-- Authentication Client (Keypad for Employee ID) v4.5
 local modemSide = "back"
 local SERVER_ID = 41
 local levelRequired = 1  -- Employee level (for example)
@@ -32,26 +32,38 @@ local function getKeypadLayout()
     return keypadWidth, keypadHeight
 end
 
--- Display welcome screen
-local function displayInterface()
-    if monitor then
-        monitor.setTextScale(1)
-        monitor.clear()
-        monitor.setCursorPos(5, 3)
-        monitor.write("Click on the monitor to begin")
-    end
+-- Function to draw a button
+local function drawButton(x, y, label)
+    monitor.setBackgroundColor(colors.lightGray)
+    monitor.setTextColor(colors.black)
+    monitor.setCursorPos(x, y)
+    monitor.write("[" .. label .. "]")
 end
 
--- Function to show keypad
+-- Function to clear the monitor
+local function clearScreen()
+    monitor.clear()
+    monitor.setBackgroundColor(colors.black)
+end
+
+-- Display welcome screen
+local function displayInterface()
+    clearScreen()
+    monitor.setTextScale(1)
+    monitor.setCursorPos(5, 3)
+    monitor.write("Click on the monitor to begin")
+end
+
+-- Function to show keypad with actual buttons
 local function showKeypad()
     local keypadWidth, keypadHeight = getKeypadLayout()
 
     if monitor then
-        monitor.clear()
+        clearScreen()
         monitor.setCursorPos(5, 2)
         monitor.write("Enter Employee ID:")
 
-        -- Buttons in a grid (5x3 or smaller based on screen size)
+        -- Buttons in a grid (3x3 or 4x4 depending on screen size)
         local buttons = {
             {"1", "2", "3", "Enter"},
             {"4", "5", "6", "Clear"},
@@ -63,8 +75,7 @@ local function showKeypad()
         local buttonX, buttonY = 5, 4
         for i, row in ipairs(buttons) do
             for j, button in ipairs(row) do
-                monitor.setCursorPos(buttonX + (j - 1) * 6, buttonY + (i - 1) * 2)
-                monitor.write("[" .. button .. "]")
+                drawButton(buttonX + (j - 1) * 8, buttonY + (i - 1) * 3, button)
             end
         end
     end
@@ -81,20 +92,20 @@ local function getEmployeeID()
 
         -- Check for button clicks and build input
         if event == "monitor_touch" then
-            -- Handle number and action buttons
-            if x >= 5 and x <= 10 and y == 4 then input = input .. "1" end
-            if x >= 11 and x <= 16 and y == 4 then input = input .. "2" end
-            if x >= 17 and x <= 22 and y == 4 then input = input .. "3" end
-            if x >= 5 and x <= 10 and y == 5 then input = input .. "4" end
-            if x >= 11 and x <= 16 and y == 5 then input = input .. "5" end
-            if x >= 17 and x <= 22 and y == 5 then input = input .. "6" end
-            if x >= 5 and x <= 10 and y == 6 then input = input .. "7" end
-            if x >= 11 and x <= 16 and y == 6 then input = input .. "8" end
-            if x >= 17 and x <= 22 and y == 6 then input = input .. "9" end
-            if x >= 5 and x <= 10 and y == 7 then input = input .. "0" end
-            if x >= 11 and x <= 16 and y == 7 then return input end  -- "Enter"
-            if x >= 17 and x <= 22 and y == 7 then input = "" end  -- "Clear"
-            if x >= 23 and x <= 28 and y == 6 then input = input:sub(1, -2) end  -- "Backspace"
+            -- Handle number and action buttons (button X and Y positions should match)
+            if x >= 5 and x <= 12 and y == 4 then input = input .. "1" end
+            if x >= 13 and x <= 20 and y == 4 then input = input .. "2" end
+            if x >= 21 and x <= 28 and y == 4 then input = input .. "3" end
+            if x >= 5 and x <= 12 and y == 5 then input = input .. "4" end
+            if x >= 13 and x <= 20 and y == 5 then input = input .. "5" end
+            if x >= 21 and x <= 28 and y == 5 then input = input .. "6" end
+            if x >= 5 and x <= 12 and y == 6 then input = input .. "7" end
+            if x >= 13 and x <= 20 and y == 6 then input = input .. "8" end
+            if x >= 21 and x <= 28 and y == 6 then input = input .. "9" end
+            if x >= 5 and x <= 12 and y == 7 then input = input .. "0" end
+            if x >= 13 and x <= 20 and y == 7 then return input end  -- "Enter"
+            if x >= 21 and x <= 28 and y == 7 then input = "" end  -- "Clear"
+            if x >= 29 and x <= 36 and y == 6 then input = input:sub(1, -2) end  -- "Backspace"
         end
     end
 end
@@ -122,7 +133,7 @@ while true do
             print("Authentication Successful! Rank: " .. rank)
 
             if monitor then
-                monitor.clear()
+                clearScreen()
                 monitor.setCursorPos(5, 3)
                 monitor.write("Welcome, Employee ID: " .. employeeID)
                 monitor.setCursorPos(5, 4)
@@ -131,14 +142,14 @@ while true do
         elseif response == "AUTH_DENIED" then
             print("Access Denied.")
             if monitor then
-                monitor.clear()
+                clearScreen()
                 monitor.setCursorPos(5, 3)
                 monitor.write("Access Denied.")
             end
         else
             print("Authentication Failed.")
             if monitor then
-                monitor.clear()
+                clearScreen()
                 monitor.setCursorPos(5, 3)
                 monitor.write("Authentication Failed.")
             end
