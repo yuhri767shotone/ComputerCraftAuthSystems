@@ -1,4 +1,4 @@
--- Authentication Client (Keypad for Employee ID) v.4.5.1
+-- Authentication Client (Keypad for Employee ID) 4.5.1
 local modemSide = "back"
 local SERVER_ID = 41
 local levelRequired = 1  -- Employee level (for example)
@@ -144,4 +144,43 @@ end
 -- Display the heading
 function heading(text)
     w, h = mon.getSize()
-    mon.setCursorPos((w - strin
+    mon.setCursorPos((w - string.len(text)) / 2 + 1, 1)
+    mon.write(text)
+end
+
+-- Label on the screen
+function label(w, h, text)
+    mon.setCursorPos(w, h)
+    mon.write(text)
+end
+
+-- Show the keypad with interactive buttons
+function showKeypad()
+    fillTable()
+    screen()
+end
+
+-- Function to handle exit
+function exitKeypad()
+    print("Exiting keypad...")
+    os.exit()
+end
+
+-- Handle input from the user
+local function getEmployeeID()
+    local input = ""
+    while true do
+        local event, side, x, y = os.pullEvent("monitor_touch")
+        if event == "monitor_touch" then
+            -- Check if clicked in any of the button areas
+            if checkxy(x, y) then
+                input = input .. button["1"]["param"]
+                print("Employee ID entered: " .. input)
+            end
+        end
+    end
+end
+
+-- Main flow
+showKeypad()
+getEmployeeID()
