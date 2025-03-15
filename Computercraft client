@@ -1,4 +1,4 @@
--- Client Authentication Script fix v5
+-- Client Authentication Scriptdddv5
 
 -- Ensure modem is active
 local modemSide = "back"
@@ -13,37 +13,36 @@ end
 rednet.open(modemSide)
 
 -- Find the monitor
-local monitors = peripheral.find("monitor")
-if #monitors == 0 then
+local monitor = peripheral.find("monitor")
+if not monitor then
     print("No monitor found.")
     return
 end
-local mon = monitors[1]  -- Use the first monitor if multiple monitors are found
 
 -- Set up monitor UI
-mon.setTextScale(1)  -- Set text scale to 1
-mon.setBackgroundColor(colors.black)
-mon.setTextColor(colors.white)
-mon.clear()
+monitor.setTextScale(1)  -- Set text scale to 1
+monitor.setBackgroundColor(colors.black)
+monitor.setTextColor(colors.white)
+monitor.clear()
 
 -- Function to display the welcome message
 local function displayInterface()
-    mon.clear()
-    mon.setCursorPos(1, 1)
-    mon.write("Click on the monitor to begin")
+    monitor.clear()
+    monitor.setCursorPos(1, 1)
+    monitor.write("Click on the monitor to begin")
 end
 
 -- Function to show the keypad
 local function showKeypad()
-    mon.clear()
-    mon.setCursorPos(5, 2)
-    mon.write("Enter Employee ID:")
-    mon.setCursorPos(5, 4)
-    mon.write("[0] [1] [2] [3] [4]")
-    mon.setCursorPos(5, 5)
-    mon.write("[5] [6] [7] [8] [9]")
-    mon.setCursorPos(5, 6)
-    mon.write("[Enter] [Clear] [Backspace]")
+    monitor.clear()
+    monitor.setCursorPos(5, 2)
+    monitor.write("Enter Employee ID:")
+    monitor.setCursorPos(5, 4)
+    monitor.write("[0] [1] [2] [3] [4]")
+    monitor.setCursorPos(5, 5)
+    monitor.write("[5] [6] [7] [8] [9]")
+    monitor.setCursorPos(5, 6)
+    monitor.write("[Enter] [Clear] [Backspace]")
 end
 
 -- Store buttons and their coordinates
@@ -75,17 +74,17 @@ end
 -- Function to fill a button on the screen
 local function fillButton(name, color)
     local button = buttons[name]
-    mon.setBackgroundColor(color)
+    monitor.setBackgroundColor(color)
     local xCenter = math.floor((button.xmax + button.xmin - string.len(name)) / 2) + 1
     local yCenter = math.floor((button.ymin + button.ymax) / 2)
 
     for y = button.ymin, button.ymax do
         for x = button.xmin, button.xmax do
-            mon.setCursorPos(x, y)
+            monitor.setCursorPos(x, y)
             if y == yCenter and x == xCenter then
-                mon.write(name)
+                monitor.write(name)
             else
-                mon.write(" ")
+                monitor.write(" ")
             end
         end
     end
@@ -101,68 +100,4 @@ setButton("5", function() handleKeyInput("5") end, 15, 19, 5, 6)
 setButton("6", function() handleKeyInput("6") end, 5, 9, 6, 7)
 setButton("7", function() handleKeyInput("7") end, 10, 14, 6, 7)
 setButton("8", function() handleKeyInput("8") end, 15, 19, 6, 7)
-setButton("9", function() handleKeyInput("9") end, 20, 24, 6, 7)
-setButton("Enter", function() submitEmployeeID() end, 5, 9, 7, 8)
-setButton("Clear", function() clearEmployeeID() end, 10, 14, 7, 8)
-setButton("Backspace", function() backspaceEmployeeID() end, 15, 19, 7, 8)
-
--- Display the interface when the program starts
-displayInterface()
-
--- Employee ID input tracking
-local employeeID = ""
-
--- Function to handle key inputs
-local function handleKeyInput(key)
-    employeeID = employeeID .. key
-    mon.setCursorPos(5, 8)
-    mon.write("ID: " .. employeeID)
-end
-
--- Function to clear the Employee ID
-local function clearEmployeeID()
-    employeeID = ""
-    mon.setCursorPos(5, 8)
-    mon.write("ID: " .. employeeID)
-end
-
--- Function to handle backspace
-local function backspaceEmployeeID()
-    employeeID = employeeID:sub(1, -2)
-    mon.setCursorPos(5, 8)
-    mon.write("ID: " .. employeeID)
-end
-
--- Function to submit the Employee ID
-local function submitEmployeeID()
-    rednet.send(SERVER_ID, employeeID)
-
-    -- Wait for the server's response
-    local senderId, response = rednet.receive(5)
-
-    -- Process the server's response
-    if response == "AUTH_SUCCESS" then
-        print("Authentication successful!")
-        mon.clear()
-        mon.setCursorPos(5, 3)
-        mon.write("Authenticated as " .. employeeID)
-    elseif response == "AUTH_DENIED" then
-        print("Access Denied.")
-        mon.clear()
-        mon.setCursorPos(5, 3)
-        mon.write("Access Denied.")
-    else
-        print("Authentication Failed.")
-        mon.clear()
-        mon.setCursorPos(5, 3)
-        mon.write("Authentication Failed.")
-    end
-end
-
--- Handle clicks on the monitor
-while true do
-    local event, side, x, y = os.pullEvent("monitor_touch")
-    if checkClick(x, y) then
-        -- A button was clicked
-    end
-end
+setButton("9", function() handleKeyInput("9") end, 20, 24, 
