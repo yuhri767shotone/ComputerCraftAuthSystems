@@ -1,109 +1,62 @@
--- Authentication Server (ID 41)
-local DISK_PATH = "/disk"
-local USER_FILE = "users.txt"
-local AUTH_LOG = "auth_log.txt"
-local modemSide = "back"
-local monitorSide = nil  -- Will auto-detect monitor
-local userCache = {}  -- Stores users even when disk is removed
+-- Authentication Server Script
+local modemSide = "back"  -- The side where the modem is connected
+local diskSide = "left"   -- The side where the disk with users.txt is connected
+local usersFile = "disk/users.txt"  -- Path to the user file
 
--- Rank levels
-local rankLevels = {
-    employee = 1,
-    manager = 2,
-    admin = 3,
-    executive = 4,
-    overseer = 5,
-    owner = math.huge
-}
-
--- Function to detect and set monitor
-local function detectMonitor()
-    for _, side in pairs(peripheral.getNames()) do
-        if peripheral.getType(side) == "monitor" then
-            monitorSide = peripheral.wrap(side)
-            monitorSide.setTextScale(1)
-            monitorSide.clear()
-            monitorSide.setCursorPos(1, 1)
-            monitorSide.write("Auth Server Active")
-            break
-        end
-    end
-end
-
--- Function to log authentication attempts
-local function logAuthentication(username, status, rank)
-    local message = username .. " has authenticated (" .. status .. ")"
-    if rank then
-        message = message .. " Rank: " .. rank
-    end
-    print(message)
-
-    -- Log to file
-    local logFile = fs.open(AUTH_LOG, "a")
-    logFile.writeLine(message)
-    logFile.close()
-
-    -- Display on monitor
-    if monitorSide then
-        monitorSide.clear()
-        monitorSide.setCursorPos(1, 1)
-        monitorSide.write(message)
-    end
-end
-
--- Function to load users from disk
-local function loadUsers()
-    local users = {}
-    if fs.exists(DISK_PATH .. "/" .. USER_FILE) then
-        local file = fs.open(DISK_PATH .. "/" .. USER_FILE, "r")
-        if file then
-            for line in file.readAll():gmatch("[^\r\n]+") do
-                local name, rank = line:match("([^=]+)=([^=]+)")
-                if name and rank then
-                    users[name] = rank
-                end
-            end
-            file.close()
-        end
-        userCache = users  -- Update cache
-    else
-        print("Disk missing. Using cached users.")
-    end
-end
-
--- Ensure modem is active
+-- Open the modem for communication
 if not peripheral.isPresent(modemSide) or peripheral.getType(modemSide) ~= "modem" then
-    print("Error: Modem not found on the back!")
+    print("Error: Modem not found!")
     return
 end
 rednet.open(modemSide)
-detectMonitor()
-loadUsers()
 
-print("Authentication Server Online...")
+-- Function to load users from users.txt
+local function loadUsers()
+    local users = {}
+    -- Check if the file exists
+    if not fs.exists(usersFile) then
+        print("Error: users.txt file not found on the disk!")
+        return users
+    end
+
+    local file = fs.open(usersFile, "r")
+    for line in file.readAll():gmatch("[^\r\n]+") do
+        -- Format: employee_id=rank
+        local id, rank = line:match("^(%d+)%=(%w+)$")
+        if id and rank then
+            users[id] = rank  -- Store the ID and corresponding rank in a table
+        end
+    end
+    file.close()
+    return users
+end
+
+-- Function to handle authentication
+local function authenticateEmployee(id)
+    local users = loadUsers()
+    local rank = users[id]  -- Check if the ID exists in users.txt
+    return rank  -- Return the rank if found, nil if not
+end
 
 -- Main server loop
 while true do
-    local senderId, message = rednet.receive()
-    loadUsers()  -- Reload users in case the disk was updated
+    local senderId, employeeID = rednet.receive()  -- Wait for employee ID from client
 
-    local users = userCache  -- Use cached data
-    local username, levelRequired = message:match("([^:]+):(%d+)")  
-    levelRequired = tonumber(levelRequired)
+    if employeeID then
+        print("Received Employee ID: " .. employeeID)
 
-    if users[username] then
-        local rank = users[username]
-        local userLevel = rankLevels[rank] or 0
-
-        if userLevel >= levelRequired then
-            rednet.send(senderId, "AUTH_SUCCESS:" .. rank)
-            logAuthentication(username, "Access Granted", rank)
+        -- Authenticate employee and check rank
+        local rank = authenticateEmployee(employeeID)
+        
+        -- Respond with appropriate message
+        if rank then
+            -- Send the rank to the client if found
+            print("Authentication Success! Rank: " .. rank)
+            rednet.send(senderId, "AUTH_SUCCESS:" .. rank)  -- Send success message with rank
         else
-            rednet.send(senderId, "AUTH_DENIED")
-            logAuthentication(username, "Access Denied", rank)
+            -- Deny access if the ID doesn't exist
+            print("Authentication Denied! Employee ID not found.")
+            rednet.send(senderId, "AUTH_DENIED")  -- Send access denied message
         end
-    else
-        rednet.send(senderId, "AUTH_FAILED")
-        logAuthentication(username, "User Not Found")
     end
 end
